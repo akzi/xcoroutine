@@ -87,7 +87,7 @@ static inline
 typename xutil::function_traits<FuncType>::stl_function_type
 	to_function(FuncType func)
 {
-	return xutil::function_traits<FuncType>::stl_function_type{ func };
+	return  typename xutil::function_traits<FuncType>::stl_function_type{ func };
 }
 
 

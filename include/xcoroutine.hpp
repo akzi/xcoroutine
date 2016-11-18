@@ -2,6 +2,8 @@
 #ifdef _MSC_VER
 #include <Windows.h>
 #else
+#include <errno.h>
+#include <string.h>
 #include <ucontext.h>
 #endif
 #include <cassert>
@@ -10,6 +12,24 @@
 #include <exception>
 namespace xcoroutine
 {
+    struct xcoroutine_error:std::exception
+    {
+        xcoroutine_error()
+        {
+#ifdef _MSC_VER
+            char errmsg[512];
+            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0, errmsg, 511, NULL);
+            error_str_ = errmsg;
+#else
+            error_str_ = strerror(errno);
+#endif
+        }
+        const char *what()
+        {
+            return error_str_.c_str();
+        }
+        std::string error_str_;
+    };
 	namespace detail
 	{
 #ifdef _MSC_VER
@@ -44,6 +64,8 @@ namespace xcoroutine
 			{
 				fiber_ = CreateFiberEx(stack_size_, 0, 
 					FIBER_FLAG_FLOAT_SWITCH, entry, func);
+                if(!fiber)
+                    throw xcoroutine_error();
 			}
 		};
 
@@ -62,12 +84,7 @@ namespace xcoroutine
 				__main_fiber = ConvertThreadToFiberEx(nullptr, 
 					FIBER_FLAG_FLOAT_SWITCH);
 				if (!__main_fiber)
-				{
-					char errmsg[512];
-					FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 
-						0, GetLastError(), 0, errmsg, 511, NULL);
-					throw std::exception(errmsg);
-				}
+                    throw xcoroutine_error();
 			}
 		};
 		struct routine_uniniter
@@ -97,7 +114,7 @@ namespace xcoroutine
 				assert(func);
 				(*func)();
 				if (swapcontext(__current_ctx, &__main_ctx) == -1)
-					throw std::exception(strerror(errno));
+					throw xcoroutine_error();
 
 			} while (true);
 		}
@@ -110,8 +127,8 @@ namespace xcoroutine
 			}
 			~routine_impl()
 			{
-				if (fiber_)
-					DeleteFiber(fiber_);
+				if (stack_)
+					delete[]stack_;
 			}
 			std::size_t stack_size_ = 64 * 1024;
 			char *stack_ = nullptr;
@@ -119,13 +136,13 @@ namespace xcoroutine
 			void init(std::function<void()> *func)
 			{
 				if (getcontext(&ctx_) == -1)
-					throw std::exception(strerror(errno));
+                    throw xcoroutine_error();
 				stack_ = new char[stack_size_];
 				ctx_.uc_stack.ss_sp = stack_;
-				ctx_.uc_stack.ss_size = ordinator.stack_size;
-				ctx_.uc_link = &ordinator.ctx;
+				ctx_.uc_stack.ss_size = stack_size_;
+				ctx_.uc_link = &__main_ctx;
 
-				makecontext(&routine->ctx, (void(*)(void*))entry, 1, func);
+				makecontext(&ctx_, (void(*)(void))entry, 1, func);
 			}
 		};
 
@@ -133,9 +150,9 @@ namespace xcoroutine
 		{
 			void operator()(routine_impl &routine)
 			{
-				__current_ctx = &routine->ctx_;
-				if (swapcontext(&__main_ctx, &routine->ctx_) == -1)
-					throw std::exception(strerror(errno));
+				__current_ctx = &routine.ctx_;
+				if (swapcontext(&__main_ctx, &routine.ctx_) == -1)
+					throw xcoroutine_error();
 			}
 		};
 
@@ -158,7 +175,7 @@ namespace xcoroutine
 			{
 				__current_ctx = nullptr;
 				if(swapcontext(&routine.ctx_, &__main_ctx) == -1)
-					throw std::exception(strerror(errno));
+                    throw xcoroutine_error();
 			}
 		};
 #endif
@@ -235,7 +252,7 @@ namespace xcoroutine
 	{
 		xroutine *coro = thread_local_.current_routine_;
 		resume = [coro] { routine_swicher()(coro); };
-		detail::yielder()(*coro);
+		detail::yielder()(coro->impl_);
 	}
 
 
