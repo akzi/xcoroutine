@@ -265,7 +265,7 @@ namespace xcoroutine
 		routine_swicher()(coro);
 	}
 
-	static inline void apply(std::function<void(std::function<void()>)> async_do)
+	static inline void apply(const std::function<void(std::function<void()>)> &async_do)
 	{
 		std::function<void()> resume_func;
 		bool is_done = false;
@@ -281,7 +281,7 @@ namespace xcoroutine
 	template<typename Result, typename ...Args>
 	static inline
 		typename std::enable_if<sizeof...(Args) == 0, Result>::type
-		apply(std::function<void(std::function<void(Result, Args...)>)> async_do)
+		apply(const std::function<void(std::function<void(Result, Args...)>)> &async_do)
 	{
 		std::function<void()> resume_func;
 		Result result;
@@ -300,7 +300,7 @@ namespace xcoroutine
 	template<typename ...Args, typename Result = std::tuple<typename std::decay<Args>::type...>>
 	static inline
 		typename std::enable_if<sizeof...(Args) >= 2, Result>::type
-		apply(std::function<void(std::function<void(Args...)>)> async_do)
+		apply(const std::function<void(std::function<void(Args...)>)> &async_do)
 	{
 		std::function<void()> resume_func;
 		bool is_done = false;
