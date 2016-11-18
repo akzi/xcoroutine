@@ -18,7 +18,8 @@ namespace xcoroutine
         {
 #ifdef _MSC_VER
             char errmsg[512];
-            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0, errmsg, 511, NULL);
+            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 
+				0, GetLastError(), 0, errmsg, 511, NULL);
             error_str_ = errmsg;
 #else
             error_str_ = strerror(errno);
@@ -262,5 +263,56 @@ namespace xcoroutine
 		xroutine *coro = thread_local_.routine_creater.create(std::forward<Func>(func));
 		assert(coro);
 		routine_swicher()(coro);
+	}
+
+	static inline void apply(std::function<void(std::function<void()>)> async_do)
+	{
+		std::function<void()> resume_func;
+		bool is_done = false;
+		async_do([&resume_func, &is_done]() {
+			is_done = true;
+			if (resume_func)
+				resume_func();
+		});
+		if (!is_done)
+			xcoroutine::yield(resume_func);
+	}
+
+	template<typename Result, typename ...Args>
+	static inline
+		typename std::enable_if<sizeof...(Args) == 0, Result>::type
+		apply(std::function<void(std::function<void(Result, Args...)>)> async_do)
+	{
+		std::function<void()> resume_func;
+		Result result;
+		bool is_done = false;
+		async_do([&resume_func, &result, &is_done](Result str) {
+			result = std::move(str);
+			is_done = true;
+			if (resume_func)
+				resume_func();
+		});
+		if (!is_done)
+			xcoroutine::yield(resume_func);
+		return std::move(result);
+	}
+
+	template<typename ...Args, typename Result = std::tuple<typename std::decay<Args>::type...>>
+	static inline
+		typename std::enable_if<sizeof...(Args) >= 2, Result>::type
+		apply(std::function<void(std::function<void(Args...)>)> async_do)
+	{
+		std::function<void()> resume_func;
+		bool is_done = false;
+		Result result_;
+		async_do([&resume_func, &result_, &is_done](Args &&... agrs) {
+			result_ = std::make_tuple(std::forward<Args>(agrs)...);
+			is_done = true;
+			if (resume_func)
+				resume_func();
+		});
+		if (!is_done)
+			xcoroutine::yield(resume_func);
+		return std::move(result_);
 	}
 }
