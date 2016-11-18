@@ -64,7 +64,7 @@ namespace xcoroutine
 			{
 				fiber_ = CreateFiberEx(stack_size_, 0, 
 					FIBER_FLAG_FLOAT_SWITCH, entry, func);
-                if(!fiber)
+                if(!fiber_)
                     throw xcoroutine_error();
 			}
 		};
