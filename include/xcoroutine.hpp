@@ -265,54 +265,55 @@ namespace xcoroutine
 		routine_swicher()(coro);
 	}
 
-	static inline void apply(const std::function<void(std::function<void()>)> &async_do)
+	//static inline void apply(const std::function<void(std::function<void()>)> &async_do,...)
+	//{
+	//	std::function<void()> resume_func;
+	//	bool is_done = false;
+	//	async_do([&resume_func, &is_done]() {
+	//		is_done = true;
+	//		if (resume_func)
+	//			resume_func();
+	//	});
+	//	if (!is_done)
+	//		xcoroutine::yield(resume_func);
+	//}
+	template<typename ...Args, typename ...Params>
+	auto apply(const std::function<void(Args...)> &async_do, Params &&...params)
 	{
+		using func_traits = xutil::function_traits<std::function<void(Args...)>>;
+		using callback_func_traits = xutil::function_traits <func_traits::args<func_traits::arity - 1>::type> ;
+		typename callback_func_traits::stl_function_type func;
+		typename callback_func_traits::tuple_type result;
 		std::function<void()> resume_func;
 		bool is_done = false;
-		async_do([&resume_func, &is_done]() {
+		func = [&](auto &&... str) {
+			result = std::forward_as_tuple(std::forward<decltype(str)>(str)...);
 			is_done = true;
 			if (resume_func)
 				resume_func();
-		});
+		};
+		async_do(std::forward<Params>(params)...,func);
 		if (!is_done)
-			xcoroutine::yield(resume_func);
+			xcoroutine::yield(resume_func); return std::move(result);
+		return result;
 	}
 
-	template<typename Result, typename ...Args>
-	static inline
-		typename std::enable_if<sizeof...(Args) == 0, Result>::type
-		apply(const std::function<void(std::function<void(Result, Args...)>)> &async_do)
-	{
-		std::function<void()> resume_func;
-		Result result;
-		bool is_done = false;
-		async_do([&resume_func, &result, &is_done](Result str) {
-			result = std::move(str);
-			is_done = true;
-			if (resume_func)
-				resume_func();
-		});
-		if (!is_done)
-			xcoroutine::yield(resume_func);
-		return std::move(result);
-	}
-
-	template<typename ...Args, typename Result = std::tuple<typename std::decay<Args>::type...>>
-	static inline
-		typename std::enable_if<sizeof...(Args) >= 2, Result>::type
-		apply(const std::function<void(std::function<void(Args...)>)> &async_do)
-	{
-		std::function<void()> resume_func;
-		bool is_done = false;
-		Result result_;
-		async_do([&resume_func, &result_, &is_done](Args &&... agrs) {
-			result_ = std::make_tuple(std::forward<Args>(agrs)...);
-			is_done = true;
-			if (resume_func)
-				resume_func();
-		});
-		if (!is_done)
-			xcoroutine::yield(resume_func);
-		return std::move(result_);
-	}
+	//template<typename ...Args, typename Result = std::tuple<typename std::decay<Args>::type...>>
+	//static inline
+	//	typename std::enable_if<sizeof...(Args) >= 2, Result>::type
+	//	apply(const std::function<void(std::function<void(Args...)>)> &async_do)
+	//{
+	//	std::function<void()> resume_func;
+	//	bool is_done = false;
+	//	Result result_;
+	//	async_do([&resume_func, &result_, &is_done](Args &&... agrs) {
+	//		result_ = std::make_tuple(std::forward<Args>(agrs)...);
+	//		is_done = true;
+	//		if (resume_func)
+	//			resume_func();
+	//	});
+	//	if (!is_done)
+	//		xcoroutine::yield(resume_func);
+	//	return std::move(result_);
+	//}
 }
