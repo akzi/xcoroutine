@@ -215,7 +215,6 @@ namespace xcoroutine
 			{
 				delete itr;
 			}
-			clear();
 		}
 		template<typename Func>
 		xroutine* create(Func &&func)
@@ -265,18 +264,6 @@ namespace xcoroutine
 		routine_swicher()(coro);
 	}
 
-	//static inline void apply(const std::function<void(std::function<void()>)> &async_do,...)
-	//{
-	//	std::function<void()> resume_func;
-	//	bool is_done = false;
-	//	async_do([&resume_func, &is_done]() {
-	//		is_done = true;
-	//		if (resume_func)
-	//			resume_func();
-	//	});
-	//	if (!is_done)
-	//		xcoroutine::yield(resume_func);
-	//}
 	template<typename ...Args, typename ...Params>
 	auto apply(const std::function<void(Args...)> &async_do, Params &&...params)
 	{
@@ -292,28 +279,9 @@ namespace xcoroutine
 			if (resume_func)
 				resume_func();
 		};
-		async_do(std::forward<Params>(params)...,func);
+		async_do(std::forward<Params>(params)...,std::move(func));
 		if (!is_done)
 			xcoroutine::yield(resume_func); return std::move(result);
 		return result;
 	}
-
-	//template<typename ...Args, typename Result = std::tuple<typename std::decay<Args>::type...>>
-	//static inline
-	//	typename std::enable_if<sizeof...(Args) >= 2, Result>::type
-	//	apply(const std::function<void(std::function<void(Args...)>)> &async_do)
-	//{
-	//	std::function<void()> resume_func;
-	//	bool is_done = false;
-	//	Result result_;
-	//	async_do([&resume_func, &result_, &is_done](Args &&... agrs) {
-	//		result_ = std::make_tuple(std::forward<Args>(agrs)...);
-	//		is_done = true;
-	//		if (resume_func)
-	//			resume_func();
-	//	});
-	//	if (!is_done)
-	//		xcoroutine::yield(resume_func);
-	//	return std::move(result_);
-	//}
 }

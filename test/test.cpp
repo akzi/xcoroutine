@@ -2,7 +2,6 @@
 #include <iostream>
 #include <functional>
 #include <type_traits>
-#include "../../xutil/include/function_traits.hpp"
 #include "../include/xcoroutine.hpp"
 
 struct user
@@ -22,6 +21,7 @@ std::function<void(std::string &&, int, bool, user&&)> callbackN;
 
 void async_do0(std::function<void()> callback)
 {
+	throw std::exception();
 	callback0_ = callback;
 }
 void async_do1(const std::string &str, std::function<void(std::string)> callback)
@@ -40,7 +40,16 @@ void xroutine_func2()
 {
 	using xutil::to_function;
 	using xcoroutine::apply;
-	apply(to_function(async_do0));
+	
+	try
+	{
+		apply(to_function(async_do0));
+	}
+	catch (const std::exception&)
+	{
+		std::cout << "catch exception" << std::endl;
+	}
+
 	auto res = apply(to_function(async_do1),"hello");
 	assert(std::get<0>(res) == "hello world");
 
@@ -60,7 +69,8 @@ int main()
 	xcoroutine::create( xroutine_func2);
 
 
-	callback0_();
+	if(callback0_)
+		callback0_();
 	callback1("hello world");
 	callback2("hello world", 1);
 	callbackN("hello world", 1, true, user(1));

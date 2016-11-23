@@ -2,57 +2,83 @@
 simple coroutine to fix the  async callback hell
 
 ```cpp
+#include <string>
+#include <iostream>
+#include <functional>
+#include <type_traits>
+#include "../include/xcoroutine.hpp"
+
+struct user
+{
+	user() {}
+	user(int id)
+		:id_(id) 
+	{}
+	int id_;
+};
+
 std::function<void()> callback0_;
 std::function<void(std::string)> callback1;
 std::function<void(std::string &&, int)> callback2;
 std::function<void(std::string &&, int, bool, user&&)> callbackN;
 
+
 void async_do0(std::function<void()> callback)
 {
+	throw std::exception();
 	callback0_ = callback;
 }
-void async_do1(std::function<void(std::string)> callback)
+void async_do1(const std::string &str, std::function<void(std::string)> callback)
 {
 	callback1 = callback;
 }
-void async_do2(std::function<void(std::string &&, int)> callback)
+void async_do2(const std::string &str, std::function<void(std::string &&, int)> callback)
 {
 	callback2 = callback;
 }
-void async_doN(std::function<void(std::string &&, int, bool, user&&)> callback)
+void async_doN(const std::string &str, std::string && data, std::function<void(std::string &&, int, bool, user&&)> callback)
 {
 	callbackN = callback;
 }
-
-void xroutine_func1()
+void xroutine_func2()
 {
-	coroutine_do(to_function(async_do0));
+	using xutil::to_function;
+	using xcoroutine::apply;
+	
+	try
+	{
+		apply(to_function(async_do0));
+	}
+	catch (const std::exception&)
+	{
+		std::cout << "catch exception" << std::endl;
+	}
 
-	auto result1 = coroutine_do(to_function(async_do1));
-	assert(result1 == "hello world");
+	auto res = apply(to_function(async_do1),"hello");
+	assert(std::get<0>(res) == "hello world");
 
-	auto result = coroutine_do(to_function(async_do2));
-	assert(std::get<0>(result) == "hello world");
-	assert(std::get<1>(result) == 1);
+	auto res2 = apply(to_function(async_do2), "hello");
+	assert(std::get<0>(res2) == "hello world");
+	assert(std::get<1>(res2) == 1);
 
-	auto resultN = coroutine_do(to_function(async_doN));
-	assert(std::get<0>(resultN) == "hello world");
-	assert(std::get<1>(resultN) == 1);
-	assert(std::get<2>(resultN) == true);
+	auto res3 = apply(to_function(async_doN), "hello", "hello2");
+	assert(std::get<0>(res3) == "hello world");
+	assert(std::get<1>(res3) == 1);
+	assert(std::get<2>(res3) == true);
+	assert(std::get<3>(res3).id_ == 1);
 
-}
-void xtest()
-{
-	xcoroutine::create(xroutine_func1);
-
-	callback0_();
-	callback1("hello world");
-	callback2("hello world", 1);
-	callbackN("hello world", 1, true, user());
 }
 int main()
 {
-	xtest();
+	xcoroutine::create( xroutine_func2);
+
+
+	if(callback0_)
+		callback0_();
+	callback1("hello world");
+	callback2("hello world", 1);
+	callbackN("hello world", 1, true, user(1));
 	return 0;
 }
+
 ```
