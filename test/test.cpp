@@ -2,6 +2,7 @@
 #include <iostream>
 #include <functional>
 #include <type_traits>
+#include <vector>
 #include "../include/xcoroutine.hpp"
 
 struct user
@@ -13,31 +14,33 @@ struct user
 	int id_;
 };
 
-std::function<void()> callback0_;
-std::function<void(std::string)> callback1;
-std::function<void(std::string &&, int)> callback2;
-std::function<void(std::string &&, int, bool, user&&)> callbackN;
+std::vector<std::function<void()>> callback0_;
+std::vector<std::function<void(std::string)>>callback1;
+std::vector<std::function<void(std::string &&, int)>> callback2;
+std::vector<std::function<void(std::string &&, int, bool, user&&)>> callbackN;
 
 
 void async_do0(std::function<void()> callback)
 {
 	throw std::exception();
-	callback0_ = callback;
+	callback0_.push_back(callback);
 }
 void async_do1(const std::string &str, std::function<void(std::string)> callback)
 {
-	callback1 = callback;
+	callback1.push_back(callback);
 }
 void async_do2(const std::string &str, std::function<void(std::string &&, int)> callback)
 {
-	callback2 = callback;
+	callback2.push_back(callback);
 }
 void async_doN(const std::string &str, std::string && data, std::function<void(std::string &&, int, bool, user&&)> callback)
 {
-	callbackN = callback;
+	callbackN.push_back(callback);
 }
+int id = 1;
 void xroutine_func2()
 {
+	int i = id++;
 	using xutil::to_function;
 	using xcoroutine::apply;
 	
@@ -66,13 +69,19 @@ void xroutine_func2()
 }
 int main()
 {
-	xcoroutine::create( xroutine_func2);
+	xcoroutine::create(xroutine_func2);
+	xcoroutine::create(xroutine_func2);
+	xcoroutine::create(xroutine_func2);
+	xcoroutine::create(xroutine_func2);
+	xcoroutine::create(xroutine_func2);
 
-
-	if(callback0_)
-		callback0_();
-	callback1("hello world");
-	callback2("hello world", 1);
-	callbackN("hello world", 1, true, user(1));
+	for(auto &itr: callback0_)
+		itr();
+	for(auto &itr: callback1)
+		itr("hello world");
+	for(auto &itr: callback2)
+		itr("hello world", 1);
+	for(auto &itr: callbackN)
+		itr("hello world", 1, true, user(1));
 	return 0;
 }

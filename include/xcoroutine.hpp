@@ -10,6 +10,7 @@
 #include <list>
 #include <functional>
 #include <exception>
+#include "../../xutil/include/function_traits.hpp"
 namespace xcoroutine
 {
     struct xcoroutine_error:std::exception
