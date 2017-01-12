@@ -249,6 +249,20 @@ namespace xcoroutine
 			detail::routine_swicher()(coro->impl_);
 		}
 	};
+
+	static inline std::function<void()> get_resume()
+	{
+		xroutine *coro = thread_local_.current_routine_;
+		assert(coro);
+		return [coro] { routine_swicher()(coro); };
+	}
+
+	static inline void yield()
+	{
+		xroutine *coro = thread_local_.current_routine_;
+		assert(coro);
+		detail::yielder()(coro->impl_);
+	}
 	template<typename T>
 	static inline void yield(T &resume)
 	{
