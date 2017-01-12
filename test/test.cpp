@@ -22,7 +22,7 @@ std::vector<std::function<void(std::string &&, int, bool, user&&)>> callbackN;
 
 void async_do0(std::function<void()> callback)
 {
-	throw std::exception();
+//	throw std::exception();
 	callback0_.push_back(callback);
 }
 void async_do1(const std::string &str, std::function<void(std::string)> callback)
