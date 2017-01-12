@@ -284,7 +284,7 @@ namespace xcoroutine
 	auto apply(const std::function<void(Args...)> &async_do, Params &&...params)
 	{
 		using func_traits = xutil::function_traits<std::function<void(Args...)>>;
-		using callback_func_traits = xutil::function_traits <func_traits::args<func_traits::arity - 1>::type> ;
+		using callback_func_traits = xutil::function_traits <typename func_traits:: template args<func_traits::arity - 1>::type> ;
 		typename callback_func_traits::stl_function_type func;
 		typename callback_func_traits::tuple_type result;
 		std::function<void()> resume_func;
