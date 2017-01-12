@@ -249,13 +249,14 @@ namespace xcoroutine
 			detail::routine_swicher()(coro->impl_);
 		}
 	};
-	static inline void yield(std::function<void()> &resume)
+	template<typename T>
+	static inline void yield(T &resume)
 	{
 		xroutine *coro = thread_local_.current_routine_;
+		assert(coro);
 		resume = [coro] { routine_swicher()(coro); };
 		detail::yielder()(coro->impl_);
 	}
-
 
 	template<typename Func>
 	static inline void create(Func &&func)
@@ -274,8 +275,8 @@ namespace xcoroutine
 		typename callback_func_traits::tuple_type result;
 		std::function<void()> resume_func;
 		bool is_done = false;
-		func = [&](auto &&... str) {
-			result = std::forward_as_tuple(std::forward<decltype(str)>(str)...);
+		func = [&](auto &&... args) {
+			result = std::forward_as_tuple(std::forward<decltype(args)>(args)...);
 			is_done = true;
 			if (resume_func)
 				resume_func();
