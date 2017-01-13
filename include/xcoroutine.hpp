@@ -297,7 +297,7 @@ namespace xcoroutine
 		};
 		async_do(std::forward<Params>(params)...,std::move(func));
 		if (!is_done)
-			xcoroutine::yield(resume_func); return std::move(result);
+			xcoroutine::yield(resume_func); 
 		return result;
 	}
 }
